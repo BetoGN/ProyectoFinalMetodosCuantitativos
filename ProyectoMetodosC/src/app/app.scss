@@ -45,6 +45,7 @@ body {
     font-size: 1.8rem;
     font-weight: 600;
     color: #ecf0f1;
+    cursor: pointer;
   }
 
   .navigation {
@@ -80,6 +81,7 @@ body {
 }
 
 router-outlet {
+  margin-top: 9vh; // Space for fixed header
   background: none;
 }
 

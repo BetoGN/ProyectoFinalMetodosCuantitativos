@@ -1,0 +1,164 @@
+<div class="max-flow-container">
+  <div class="header-section">
+    <h1>Visualizador de Flujo Máximo - Algoritmo Ford-Fulkerson</h1>
+    <p class="description">
+      Implementación del algoritmo Ford-Fulkerson usando BFS (Edmonds-Karp) para encontrar el flujo máximo en una red de flujo.
+    </p>
+  </div>
+
+  <!-- Input Section -->
+  @if (isMatrixVisible) {
+    <div class="input-section">
+      <h2>Configuración del Grafo</h2>
+      
+      <div class="controls">
+        <div class="control-group">
+          <label for="nodeCount">Número de nodos:</label>
+          <input 
+            type="number" 
+            id="nodeCount" 
+            [value]="nodeCount"
+            min="2" 
+            max="8" 
+            (change)="onNodeCountChange($event)">
+          <button class="btn btn-primary" (click)="setupGraph()">Configurar Grafo</button>
+        </div>
+      </div>
+
+      <div class="matrix-section">
+        <p>Ingresa las capacidades de las aristas (0 = sin arista):</p>
+        
+        <div class="button-group">
+          <button class="btn btn-secondary" (click)="generateRandomMatrix()">Matriz Aleatoria</button>
+          <button class="btn btn-secondary" (click)="clearMatrix()">Limpiar Matriz</button>
+          <button class="btn btn-secondary" (click)="loadExample()">Ejemplo 1 (6 nodos)</button>
+          <button class="btn btn-secondary" (click)="loadExample2()">Ejemplo 2 (5 nodos)</button>
+        </div>
+
+        <div class="matrix-container">
+          <table class="capacity-matrix">
+            <tr>
+              <th class="matrix-header"></th>
+              @for (j of range(nodeCount); track j) {
+                <th class="matrix-header">Nodo {{j}}</th>
+              }
+            </tr>
+            @for (i of range(nodeCount); track i) {
+              <tr>
+                <th class="matrix-header">Nodo {{i}}</th>
+                @for (j of range(nodeCount); track j) {
+                  <td>
+                    <input 
+                      type="number" 
+                      class="matrix-input"
+                      [value]="getMatrixValue(i, j)"
+                      (input)="onMatrixInputChange($event, i, j)"
+                      [disabled]="i === j"
+                      min="0"
+                      placeholder="0">
+                  </td>
+                }
+              </tr>
+            }
+          </table>
+        </div>
+
+        <button class="btn btn-primary btn-large" (click)="solveProblem()">
+          Ejecutar Algoritmo
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Solution Section -->
+  @if (isSolutionVisible) {
+    <div class="solution-section" [class.completion-highlight]="showCompletionHighlight">
+      <h2>Solución - Algoritmo Ford-Fulkerson</h2>
+      
+      <div class="solution-controls">
+        <div class="control-group">
+          <div class="button-group">
+            <button 
+              class="btn btn-secondary" 
+              (click)="previousStep()" 
+              [disabled]="currentStep <= 0">
+              ← Paso Anterior
+            </button>
+            <button 
+              class="btn btn-secondary" 
+              (click)="nextStep()" 
+              [disabled]="currentStep >= steps.length - 1">
+              Siguiente Paso →
+            </button>
+            @if (isLastStep()) {
+              <button 
+                class="btn btn-success" 
+                (click)="restartAnimation()">
+                Reiniciar Animación
+              </button>
+            }
+            <button 
+              class="btn btn-primary" 
+              (click)="toggleAutoPlay()">
+              @if (isAutoPlaying) {
+                Detener Auto
+              } @else {
+                Reproducir Auto
+              }
+            </button>
+            <button class="btn btn-danger" (click)="resetSolution()">
+              Volver a Configuración
+            </button>
+          </div>
+          <span class="step-info">{{ getCurrentStepInfo() }}</span>
+        </div>
+      </div>
+
+      @if (getCurrentStep()) {
+        <div class="step-description">
+          <div class="step-info-card" [class.completed]="getCurrentStep()?.isComplete">
+            <h3>{{ getCurrentStep()?.description }}</h3>
+            @if (getCurrentStep()?.isComplete) {
+              <div class="completion-banner">
+                <h2>Algoritmo Completado Exitosamente</h2>
+                <div class="final-result">
+                  <strong>FLUJO MÁXIMO ENCONTRADO: {{ maxFlowResult }}</strong>
+                </div>
+              </div>
+            }
+            @if (getCurrentStep()?.maxFlow !== undefined) {
+              <div class="flow-info">
+                <div class="flow-stat">
+                  <strong>Flujo Máximo Actual:</strong> 
+                  <span class="flow-value" [class.final-flow]="getCurrentStep()?.isComplete">{{ getCurrentStep()?.maxFlow }}</span>
+                </div>
+                @if (getCurrentStep()?.flow && getCurrentStep()!.flow > 0) {
+                  <div class="flow-stat">
+                    <strong>Flujo Agregado:</strong> 
+                    <span class="flow-value">{{ getCurrentStep()?.flow }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="visualization-container">
+        <div class="graph-container" #graphContainer>
+          <canvas #graphCanvas class="graph-canvas"></canvas>
+        </div>
+      </div>
+      
+      <div class="algorithm-info">
+        <h3>Información del Algoritmo</h3>
+        <ul>
+          <li><strong>Algoritmo:</strong> Ford-Fulkerson con BFS (Edmonds-Karp)</li>
+          <li><strong>Complejidad:</strong> O(V × E²) donde V = nodos, E = aristas</li>
+          <li><strong>Estrategia:</strong> Encuentra caminos aumentantes usando búsqueda en anchura</li>
+          <li><strong>Ventaja:</strong> Garantiza terminación y encuentra el flujo máximo óptimo</li>
+        </ul>
+      </div>
+    </div>
+  }
+</div>
