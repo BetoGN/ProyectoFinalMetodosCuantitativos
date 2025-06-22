@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home';
 import { FlujoMaximoComponent } from './pages/flujo-maximo/flujo-maximo';
-
+import { ComponentPert } from './pages/component-pert/component-pert';
 
 export const routes: Routes = [
   { 
@@ -13,5 +13,10 @@ export const routes: Routes = [
     path: 'programa1',
     component: FlujoMaximoComponent,
     title: 'Flujo Máximo'
+  },
+  {
+    path: 'programa2',
+    component: ComponentPert,
+    title: 'PERT Probabilístico'
   }
 ];
