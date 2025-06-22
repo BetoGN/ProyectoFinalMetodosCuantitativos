@@ -1,0 +1,177 @@
+<div class="pert-container">
+<br><br>
+  <div class="header">
+    <h1>Análisis PERT Probabilístico</h1>
+    <div class="header-buttons">
+      <button class="btn-primary" (click)="toggleFormulario()">
+        {{ mostrarFormulario ? 'Cancelar' : 'Agregar Actividad' }}
+      </button>
+      <button class="btn-secondary" (click)="limpiarDatos()">Limpiar Todo</button>
+    </div>
+  </div>
+
+  <!-- Formulario para nueva actividad -->
+  <div class="form-container" *ngIf="mostrarFormulario">
+    <h3>Nueva Actividad</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ID:</label>
+        <input type="text" [(ngModel)]="nuevaActividad.id" placeholder="A, B, C...">
+      </div>
+      <div class="form-group">
+        <label>Nombre:</label>
+        <input type="text" [(ngModel)]="nuevaActividad.nombre" placeholder="Nombre de la actividad">
+      </div>
+      <div class="form-group">
+        <label>Tiempo Optimista:</label>
+        <input type="number" [(ngModel)]="nuevaActividad.tiempoOptimista" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Tiempo Más Probable:</label>
+        <input type="number" [(ngModel)]="nuevaActividad.tiempoMasProbable" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Tiempo Pesimista:</label>
+        <input type="number" [(ngModel)]="nuevaActividad.tiempoPesimista" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Predecesoras (separadas por coma):</label>
+        <input type="text" #predecesoras placeholder="A,B,C...">
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button class="btn-success" (click)="procesarYAgregarActividad(predecesoras.value)">
+        Agregar Actividad
+      </button>
+    </div>
+    
+    <div class="error-message" *ngIf="errorMensaje">
+      {{ errorMensaje }}
+    </div>
+  </div>
+
+  <!-- Tabla de actividades -->
+  <div class="table-container" *ngIf="actividades.length > 0">
+    <h3>Actividades del Proyecto</h3>
+    <div class="table-wrapper">
+      <table class="activities-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Predecesoras</th>
+            <th>T. Opt</th>
+            <th>T. Prob</th>
+            <th>T. Pes</th>
+            <th>T. Esp</th>
+            <th>Varianza</th>
+            <th>IT</th>
+            <th>FT</th>
+            <th>Holgura</th>
+            <th>Crítica</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let actividad of actividades" [class.critical]="actividad.esCritica">
+            <td>{{ actividad.id }}</td>
+            <td>{{ actividad.nombre }}</td>
+            <td>{{ actividad.predecesoras.join(', ') || '-' }}</td>
+            <td>{{ actividad.tiempoOptimista }}</td>
+            <td>{{ actividad.tiempoMasProbable }}</td>
+            <td>{{ actividad.tiempoPesimista }}</td>
+            <td>{{ actividad.tiempoEsperado | number:'1.2-2' }}</td>
+            <td>{{ actividad.varianza | number:'1.2-2' }}</td>
+            <td>{{ actividad.inicioTemprano | number:'1.2-2' }}</td>
+            <td>{{ actividad.finTemprano | number:'1.2-2' }}</td>
+            <td>{{ actividad.holguraTotal | number:'1.2-2' }}</td>
+            <td>
+              <span class="critical-badge" *ngIf="actividad.esCritica">SÍ</span>
+              <span *ngIf="!actividad.esCritica">NO</span>
+            </td>
+            <td>
+              <button class="btn-danger" (click)="eliminarActividad(actividad.id)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Resultados del análisis PERT -->
+  <div class="results-container" *ngIf="resultados">
+    <h3>Resultados del Análisis PERT</h3>
+    
+    <div class="results-grid">
+      <div class="result-card">
+        <h4>Duración del Proyecto</h4>
+        <p class="result-value">{{ resultados.duracionProyecto | number:'1.2-2' }} días</p>
+      </div>
+      
+      <div class="result-card">
+        <h4>Desviación Estándar</h4>
+        <p class="result-value">{{ resultados.desviacionEstandarProyecto | number:'1.2-2' }} días</p>
+      </div>
+      
+      <div class="result-card">
+        <h4>Varianza del Proyecto</h4>
+        <p class="result-value">{{ resultados.varianzaProyecto | number:'1.2-2' }}</p>
+      </div>
+      
+      <div class="result-card">
+        <h4>Ruta Crítica</h4>
+        <p class="result-value critical-path">{{ resultados.rutaCritica.join(' → ') }}</p>
+      </div>
+    </div>
+
+    <!-- Calculadora de probabilidades -->
+    <div class="probability-calculator">
+      <h4>Calculadora de Probabilidades</h4>
+      <div class="calc-input">
+        <label>Tiempo Objetivo:</label>
+        <input type="number" [(ngModel)]="tiempoObjetivo" min="0" step="0.1">
+        <span class="probability-result">
+          Probabilidad: {{ calcularProbabilidadTiempoObjetivo() | number:'1.2-2' }}
+          ({{ (calcularProbabilidadTiempoObjetivo() * 100) | number:'1.1-1' }}%)
+        </span>
+      </div>
+    </div>
+
+    <!-- Tabla de probabilidades -->
+    <div class="probability-table">
+      <h4>Tabla de Probabilidades</h4>
+      <div class="table-wrapper">
+        <table class="prob-table">
+          <thead>
+            <tr>
+              <th>Tiempo (días)</th>
+              <th>Probabilidad</th>
+              <th>Porcentaje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let prob of resultados.probabilidades">
+              <td>{{ prob.tiempoObjetivo }}</td>
+              <td>{{ prob.probabilidad | number:'1.4-4' }}</td>
+              <td>{{ (prob.probabilidad * 100) | number:'1.2-2' }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instrucciones -->
+  <div class="instructions">
+    <h3>Instrucciones</h3>
+    <ul>
+      <li><strong>Tiempo Optimista:</strong> El tiempo mínimo en el que se puede completar la actividad</li>
+      <li><strong>Tiempo Más Probable:</strong> El tiempo más realista para completar la actividad</li>
+      <li><strong>Tiempo Pesimista:</strong> El tiempo máximo en el que se puede completar la actividad</li>
+      <li><strong>Tiempo Esperado:</strong> Se calcula como: (Optimista + 4×Más Probable + Pesimista) / 6</li>
+      <li><strong>Varianza:</strong> Se calcula como: ((Pesimista - Optimista) / 6)²</li>
+      <li><strong>Ruta Crítica:</strong> Secuencia de actividades que determina la duración mínima del proyecto</li>
+    </ul>
+  </div>
+</div>
