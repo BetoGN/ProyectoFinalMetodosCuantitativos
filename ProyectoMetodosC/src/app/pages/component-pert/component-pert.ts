@@ -137,6 +137,9 @@ export class ComponentPert implements OnInit {
   }
 
   agregarActividad() {
+    // Limpiar mensaje de error anterior
+    this.errorMensaje = '';
+
     if (!this.nuevaActividad.id || !this.nuevaActividad.nombre || 
         !this.nuevaActividad.tiempoOptimista || !this.nuevaActividad.tiempoMasProbable || 
         !this.nuevaActividad.tiempoPesimista) {
@@ -144,9 +147,36 @@ export class ComponentPert implements OnInit {
       return;
     }
 
+    // Validar que los tiempos sean positivos
+    if (this.nuevaActividad.tiempoOptimista <= 0 || 
+        this.nuevaActividad.tiempoMasProbable <= 0 || 
+        this.nuevaActividad.tiempoPesimista <= 0) {
+      this.errorMensaje = 'Todos los tiempos deben ser mayores a 0';
+      return;
+    }
+
+    // Validar que el tiempo optimista <= tiempo más probable <= tiempo pesimista
+    if (this.nuevaActividad.tiempoOptimista > this.nuevaActividad.tiempoMasProbable ||
+        this.nuevaActividad.tiempoMasProbable > this.nuevaActividad.tiempoPesimista) {
+      this.errorMensaje = 'Los tiempos deben cumplir: Optimista ≤ Más Probable ≤ Pesimista';
+      return;
+    }
+
     if (this.actividades.some(a => a.id === this.nuevaActividad.id)) {
       this.errorMensaje = 'Ya existe una actividad con este ID';
       return;
+    }
+
+    // Validar que las predecesoras existan
+    if (this.nuevaActividad.predecesoras && this.nuevaActividad.predecesoras.length > 0) {
+      const predecesrasInvalidas = this.nuevaActividad.predecesoras.filter(p => 
+        !this.actividades.some(a => a.id === p)
+      );
+      
+      if (predecesrasInvalidas.length > 0) {
+        this.errorMensaje = `Las siguientes predecesoras no existen: ${predecesrasInvalidas.join(', ')}`;
+        return;
+      }
     }
 
     const actividad: Actividad = {
@@ -171,7 +201,6 @@ export class ComponentPert implements OnInit {
     this.actividades.push(actividad);
     this.nuevaActividad = {};
     this.mostrarFormulario = false;
-    this.errorMensaje = '';
     this.calcularPERT();
   }
 
@@ -185,78 +214,171 @@ export class ComponentPert implements OnInit {
   }
 
   calcularPERT() {
-    if (this.actividades.length === 0) return;
+    if (this.actividades.length === 0) {
+      this.resultados = null;
+      return;
+    }
 
-    // Paso 1: Calcular tiempo esperado y varianza para cada actividad
-    this.actividades.forEach(actividad => {
-      actividad.tiempoEsperado = (actividad.tiempoOptimista + 4 * actividad.tiempoMasProbable + actividad.tiempoPesimista) / 6;
-      actividad.varianza = Math.pow((actividad.tiempoPesimista - actividad.tiempoOptimista) / 6, 2);
-      actividad.desviacionEstandar = Math.sqrt(actividad.varianza);
-    });
+    // Validar que no haya dependencias circulares
+    if (!this.validarDependencias()) {
+      this.errorMensaje = 'Error: Se detectaron dependencias circulares en las actividades';
+      return;
+    }
 
-    // Paso 2: Calcular tiempos tempranos (Forward Pass)
+    try {
+      // Paso 1: Calcular tiempo esperado y varianza para cada actividad
+      this.actividades.forEach(actividad => {
+        actividad.tiempoEsperado = (actividad.tiempoOptimista + 4 * actividad.tiempoMasProbable + actividad.tiempoPesimista) / 6;
+        actividad.varianza = Math.pow((actividad.tiempoPesimista - actividad.tiempoOptimista) / 6, 2);
+        actividad.desviacionEstandar = Math.sqrt(actividad.varianza);
+      });
+
+      // Paso 2: Calcular tiempos tempranos (Forward Pass)
+      this.calcularTiemposTempranos();
+
+      // Paso 3: Calcular tiempos tardíos (Backward Pass)
+      this.calcularTiemposTardios();
+
+      // Paso 4: Calcular holguras y determinar ruta crítica
+      this.calcularHolguras();
+
+      // Paso 5: Generar resultados
+      this.generarResultados();
+
+    } catch (error) {
+      console.error('Error en cálculos PERT:', error);
+      this.errorMensaje = 'Error en los cálculos. Verifique las dependencias de las actividades.';
+    }
+  }
+
+  private validarDependencias(): boolean {
+    const visitado = new Set<string>();
+    const enProceso = new Set<string>();
+
+    const tieneCicloDFS = (actividadId: string): boolean => {
+      if (enProceso.has(actividadId)) return true;
+      if (visitado.has(actividadId)) return false;
+
+      visitado.add(actividadId);
+      enProceso.add(actividadId);
+
+      const actividad = this.actividades.find(a => a.id === actividadId);
+      if (actividad) {
+        for (const predecesoraId of actividad.predecesoras) {
+          if (tieneCicloDFS(predecesoraId)) return true;
+        }
+      }
+
+      enProceso.delete(actividadId);
+      return false;
+    };
+
+    for (const actividad of this.actividades) {
+      if (tieneCicloDFS(actividad.id)) return false;
+    }
+    return true;
+  }
+
+  private calcularTiemposTempranos(): void {
     const procesadas = new Set<string>();
-    const cola = this.actividades.filter(a => a.predecesoras.length === 0);
-    
-    cola.forEach(actividad => {
-      actividad.inicioTemprano = 0;
-      actividad.finTemprano = actividad.tiempoEsperado;
-      procesadas.add(actividad.id);
-    });
+    let iteraciones = 0;
+    const maxIteraciones = this.actividades.length * 2;
+
+    // Inicializar actividades sin predecesoras
+    this.actividades
+      .filter(a => a.predecesoras.length === 0)
+      .forEach(actividad => {
+        actividad.inicioTemprano = 0;
+        actividad.finTemprano = actividad.tiempoEsperado;
+        procesadas.add(actividad.id);
+      });
 
     while (procesadas.size < this.actividades.length) {
+      iteraciones++;
+      if (iteraciones > maxIteraciones) {
+        throw new Error('Bucle infinito detectado en cálculo de tiempos tempranos');
+      }
+
       const siguientes = this.actividades.filter(a => 
         !procesadas.has(a.id) && 
+        a.predecesoras.length > 0 &&
         a.predecesoras.every(p => procesadas.has(p))
       );
 
+      if (siguientes.length === 0) break;
+
       siguientes.forEach(actividad => {
-        const tiemposFinPredecesoras = actividad.predecesoras.map(p => 
-          this.actividades.find(a => a.id === p)!.finTemprano
-        );
-        actividad.inicioTemprano = Math.max(...tiemposFinPredecesoras, 0);
+        const tiemposFinPredecesoras = actividad.predecesoras
+          .map(p => this.actividades.find(a => a.id === p))
+          .filter(a => a !== undefined)
+          .map(a => a!.finTemprano);
+        
+        if (tiemposFinPredecesoras.length > 0) {
+          actividad.inicioTemprano = Math.max(...tiemposFinPredecesoras);
+        } else {
+          actividad.inicioTemprano = 0;
+        }
+        
         actividad.finTemprano = actividad.inicioTemprano + actividad.tiempoEsperado;
         procesadas.add(actividad.id);
       });
     }
+  }
 
-    // Paso 3: Calcular tiempos tardíos (Backward Pass)
+  private calcularTiemposTardios(): void {
     const duracionProyecto = Math.max(...this.actividades.map(a => a.finTemprano));
     
+    // Encontrar actividades finales
     const finales = this.actividades.filter(a => 
       !this.actividades.some(b => b.predecesoras.includes(a.id))
     );
     
+    // Inicializar actividades finales
     finales.forEach(actividad => {
       actividad.finTardio = duracionProyecto;
       actividad.inicioTardio = actividad.finTardio - actividad.tiempoEsperado;
     });
 
-    const procesadasTardio = new Set(finales.map(a => a.id));
-    
-    while (procesadasTardio.size < this.actividades.length) {
+    const procesadas = new Set(finales.map(a => a.id));
+    let iteraciones = 0;
+    const maxIteraciones = this.actividades.length * 2;
+
+    while (procesadas.size < this.actividades.length) {
+      iteraciones++;
+      if (iteraciones > maxIteraciones) {
+        throw new Error('Bucle infinito detectado en cálculo de tiempos tardíos');
+      }
+
       const anteriores = this.actividades.filter(a => 
-        !procesadasTardio.has(a.id) && 
-        this.actividades.some(b => b.predecesoras.includes(a.id) && procesadasTardio.has(b.id))
+        !procesadas.has(a.id) && 
+        this.actividades.some(b => 
+          b.predecesoras.includes(a.id) && procesadas.has(b.id)
+        )
       );
 
+      if (anteriores.length === 0) break;
+
       anteriores.forEach(actividad => {
-        const sucesores = this.actividades.filter(b => b.predecesoras.includes(actividad.id));
-        const tiemposInicioSucesores = sucesores.map(s => s.inicioTardio);
-        actividad.finTardio = Math.min(...tiemposInicioSucesores);
-        actividad.inicioTardio = actividad.finTardio - actividad.tiempoEsperado;
-        procesadasTardio.add(actividad.id);
+        const sucesores = this.actividades.filter(b => 
+          b.predecesoras.includes(actividad.id) && procesadas.has(b.id)
+        );
+        
+        if (sucesores.length > 0) {
+          const tiemposInicioSucesores = sucesores.map(s => s.inicioTardio);
+          actividad.finTardio = Math.min(...tiemposInicioSucesores);
+          actividad.inicioTardio = actividad.finTardio - actividad.tiempoEsperado;
+          procesadas.add(actividad.id);
+        }
       });
     }
+  }
 
-    // Paso 4: Calcular holguras y determinar ruta crítica
+  private calcularHolguras(): void {
     this.actividades.forEach(actividad => {
       actividad.holguraTotal = actividad.inicioTardio - actividad.inicioTemprano;
       actividad.esCritica = Math.abs(actividad.holguraTotal) < 0.001;
-    });
-
-    // Calcular holgura libre
-    this.actividades.forEach(actividad => {
+      
+      // Calcular holgura libre
       const sucesores = this.actividades.filter(b => b.predecesoras.includes(actividad.id));
       if (sucesores.length === 0) {
         actividad.holguraLibre = actividad.holguraTotal;
@@ -265,23 +387,25 @@ export class ComponentPert implements OnInit {
         actividad.holguraLibre = minInicioSucesores - actividad.finTemprano;
       }
     });
+  }
 
-    // Paso 5: Determinar ruta crítica
+  private generarResultados(): void {
+    const duracionProyecto = Math.max(...this.actividades.map(a => a.finTemprano));
     const rutaCritica = this.actividades.filter(a => a.esCritica).map(a => a.id);
     
-    // Paso 6: Calcular varianza del proyecto (suma de varianzas de actividades críticas)
     const varianzaProyecto = this.actividades
       .filter(a => a.esCritica)
       .reduce((sum, a) => sum + a.varianza, 0);
 
     const desviacionEstandarProyecto = Math.sqrt(varianzaProyecto);
 
-    // Paso 7: Calcular probabilidades para diferentes tiempos objetivo
+    // Calcular probabilidades
     const probabilidades = [];
-    for (let t = Math.ceil(duracionProyecto - 3 * desviacionEstandarProyecto); 
-         t <= Math.ceil(duracionProyecto + 3 * desviacionEstandarProyecto); 
-         t++) {
-      const z = (t - duracionProyecto) / desviacionEstandarProyecto;
+    const rangoInferior = Math.max(1, Math.ceil(duracionProyecto - 3 * desviacionEstandarProyecto));
+    const rangoSuperior = Math.ceil(duracionProyecto + 3 * desviacionEstandarProyecto);
+    
+    for (let t = rangoInferior; t <= rangoSuperior; t++) {
+      const z = desviacionEstandarProyecto > 0 ? (t - duracionProyecto) / desviacionEstandarProyecto : 0;
       const probabilidad = this.calcularProbabilidadNormal(z);
       probabilidades.push({ tiempoObjetivo: t, probabilidad });
     }
