@@ -1,0 +1,54 @@
+<div class="vogel-container">
+  <h1>Método de Aproximación de Vogel</h1>
+
+  <div class="config-section">
+    <label for="plantas">Número de plantas:</label>
+    <input type="number" id="plantas" [(ngModel)]="plantas" min="1" (change)="actualizarPlantasCiudades()">
+
+    <label for="ciudades">Número de ciudades:</label>
+    <input type="number" id="ciudades" [(ngModel)]="ciudades" min="1" (change)="actualizarPlantasCiudades()">
+  </div>
+
+  <div class="tabla-section">
+    <h2>Costos</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th *ngFor="let j of [].constructor(ciudades); let col = index">Destino {{ col + 1 }}</th>
+        <th>Oferta</th>
+      </tr>
+      <tr *ngFor="let row of [].constructor(plantas); let i = index">
+        <th>Planta {{ i + 1 }}</th>
+        <td *ngFor="let j of [].constructor(ciudades); let col = index">
+          <input type="number" [(ngModel)]="costos[i][col]">
+        </td>
+        <td><input type="number" [(ngModel)]="oferta[i]"></td>
+      </tr>
+      <tr>
+        <th>Demanda</th>
+        <td *ngFor="let d of demanda; let j = index">
+          <input type="number" [(ngModel)]="demanda[j]">
+        </td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+  <button class="btn-calcular" (click)="calcularVogel()">Calcular</button>
+
+  <div class="resultado-section" *ngIf="resultadoTabla.length">
+    <h2>Tabla de Asignaciones</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th *ngFor="let j of [].constructor(resultadoTabla[0].length); let col = index">Destino {{ col + 1 }}</th>
+      </tr>
+      <tr *ngFor="let row of resultadoTabla; let i = index">
+        <th>Planta {{ i + 1 }}</th>
+        <td *ngFor="let val of row">{{ val }}</td>
+      </tr>
+    </table>
+
+    <h3>Costo Total: {{ costoTotal }}</h3>
+  </div>
+</div>
