@@ -1,0 +1,124 @@
+/* vogel.component.scss */
+
+.vogel-container {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #f8f4fc;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+  h1, h2, h3 {
+    color: #5a189a;
+    text-align: center;
+  }
+
+  .config-section,
+  .tabla-section {
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+  }
+
+  label {
+    font-weight: bold;
+    color: #5a189a;
+  }
+
+  input[type="number"] {
+    width: 80px;
+    padding: 0.4rem;
+    margin: 0.3rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+ 
+  }
+input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"]:focus {
+    outline: 2px solid #b185db;
+    background-color: #faf3ff;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+
+    th, td {
+      padding: 0.6rem;
+      text-align: center;
+      border: 1px solid #ccc;
+    }
+
+    th {
+      background-color: #d0bdf4;
+      color: #240046;
+    }
+
+    td input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  .btn-calcular {
+    display: block;
+    margin: 2rem auto;
+    padding: 0.8rem 1.5rem;
+    background-color: #7b2cbf;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .btn-calcular:hover {
+    background-color: #5a189a;
+  }
+
+  .resultado-section {
+    margin-top: 2rem;
+
+    h3 {
+      color: #3c096c;
+      text-align: center;
+    }
+  }
+
+  .oferta-inputs, .demanda-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+
+  .tabla-section table td:last-child,
+  .tabla-section table tr:last-child td {
+    background-color: #f3e8ff;
+    font-weight: bold;
+  }
+
+  /* Asegura que el cambio en número de plantas/ciudades se vea reflejado */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+
+}
