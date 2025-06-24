@@ -262,7 +262,7 @@ export class FlujoMaximoComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Add step
       this.steps.push({
-        description: `Camino aumentante encontrado: ${path.map(e => `${e.from}→${e.to}`).join(' → ')} con flujo cuello de botella: ${pathFlow}`,
+        description: `Camino encontrado: ${path.map(e => `${e.from}→${e.to}`).join(' → ')} con flujo de: ${pathFlow}`,
         residualGraph: this.cloneMatrix(this.residualGraph),
         path: [...path],
         flow: pathFlow,
